@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>RootWeb · 模块管理</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0a0c0f; --bg2:#0e1115;
+  --card:#14181d; --card2:#1b2027; --card3:#222833;
+  --line:#232b34; --line2:#2c3642;
+  --fg:#e9edf3; --dim:#9aa5b3; --dim2:#6b7787;
+  --acc:#00d1a0; --acc2:#00b98d; --acc-glow:rgba(0,209,160,.28);
+  --acc-ink:#06281f;
+  --ok:#3ddc84; --warn:#ffc857; --err:#ff6b6b;
+  --r:16px;
+  --shadow:0 4px 16px rgba(0,0,0,.35);
+  --shadow-lg:0 8px 28px rgba(0,0,0,.45);
+  --wall:radial-gradient(1200px 500px at 50% -200px, rgba(0,209,160,.07), transparent 60%);
+  /* 半透明玻璃质感 */
+  --glass:rgba(20,24,29,.62);        /* 卡片底色（透出壁纸） */
+  --glass2:rgba(27,32,39,.55);       /* 次级：按钮/输入框 */
+  --glass3:rgba(34,40,51,.6);        /* hover */
+  --glass-line:rgba(255,255,255,.09);/* 玻璃描边 */
+  --glass-blur:16px;--glass-sat:1.3;                 /* 模糊强度 */
+  --veil:rgba(10,12,15,.55);         /* 页面整体暗化层，保证文字对比 */
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0 auto;padding:16px;padding-bottom:88px;background:var(--bg);color:var(--fg);
+  font:14px/1.55 "Roboto","Noto Sans CJK SC",system-ui,-apple-system,sans-serif;
+  width:100%;max-width:920px;
+  background-image:var(--wall);
+  background-size:cover;background-attachment:fixed;background-position:center;
+  transition:background-color .4s ease;
+  position:relative;
+}
+/* 壁纸之上叠一层暗化，保证半透明卡片内的文字对比度 */
+body::before{
+  content:'';position:fixed;inset:0;background:var(--veil);z-index:-1;pointer-events:none;
+  transition:background-color .4s ease;
+}
+
+/* ---------- 过渡动画 ---------- */
+.page{display:none}
+.page.show{display:block;animation:pageIn .3s ease}
+@keyframes pageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.card{animation:cardIn .35s ease both}
+@keyframes cardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.card:nth-child(2){animation-delay:.04s}
+.card:nth-child(3){animation-delay:.08s}
+.card:nth-child(4){animation-delay:.12s}
+.card:nth-child(5){animation-delay:.16s}
+.card:nth-child(6){animation-delay:.2s}
+.tab{transition:all .2s cubic-bezier(.4,0,.2,1)}
+.fab{transition:transform .2s cubic-bezier(.4,0,.2,1), box-shadow .2s ease}
+button{transition:.18s cubic-bezier(.4,0,.2,1)}
+.tag{animation:popIn .3s ease both}
+@keyframes popIn{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+
+/* ---------- 顶栏 ---------- */
+.top{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.logo{
+  width:40px;height:40px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--acc),var(--acc2));color:var(--acc-ink);font-size:20px;font-weight:800;
+  box-shadow:0 4px 14px var(--acc-glow);
+}
+.top h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.2px}
+.top .ver{color:var(--dim2);font-size:11px;font-weight:400;margin-top:2px}
+h1 .dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);flex:none}
+.sub{color:var(--dim);font-size:12px;margin:8px 0 14px;line-height:1.7;word-break:break-word}
+.sub b{color:var(--fg);font-weight:600}
+.sub .pill{display:inline-block;background:var(--card2);border:1px solid var(--line);border-radius:99px;padding:2px 10px;margin:3px 4px 0 0;font-size:11px;color:var(--dim)}
+
+/* ---------- 卡片 ---------- */
+.card{
+  background:var(--glass);
+  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border:1px solid var(--glass-line);border-radius:var(--r);padding:14px;margin-bottom:12px;
+  box-shadow:var(--shadow);
+}
+.row{display:flex;gap:12px;align-items:flex-start}
+.grow{flex:1;min-width:0}
+.name{font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ver{color:var(--acc);font-size:11px;font-weight:400;background:var(--acc-ink);padding:1px 8px;border-radius:99px;border:1px solid var(--acc-glow)}
+.desc{color:var(--dim);font-size:12.5px;margin-top:5px;word-break:break-word;
+      display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.meta{color:var(--dim2);font-size:11px;margin-top:8px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+
+/* ---------- 标签 ---------- */
+.tag{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:99px;font-size:10.5px;font-weight:500;line-height:1.5}
+.tag::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.tag.on{background:rgba(61,220,132,.14);color:var(--ok)}
+.tag.off{background:rgba(255,107,107,.13);color:var(--err)}
+.tag.pend{background:rgba(255,200,87,.13);color:var(--warn)}
+.tag.info{background:var(--acc-glow);color:var(--acc)}
+.tag.warn{background:rgba(255,176,102,.14);color:#ffb066}
+
+/* ---------- 按钮 ---------- */
+button{
+  background:var(--glass2);color:var(--fg);border:1px solid var(--glass-line);border-radius:99px;
+  padding:8px 14px;font-size:12.5px;cursor:pointer;transition:.15s;font-family:inherit;white-space:nowrap;
+  font-weight:500;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+button:hover{background:var(--glass3);border-color:rgba(255,255,255,.16)}
+button:active{transform:scale(.96)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.primary{
+  background:linear-gradient(135deg,var(--acc),var(--acc2));border:none;color:var(--acc-ink);font-weight:700;
+  box-shadow:0 3px 12px var(--acc-glow);
+}
+button.primary:hover{background:linear-gradient(135deg,var(--acc),var(--acc2));filter:brightness(1.08)}
+button.ghost{background:transparent;border-color:var(--line2);color:var(--dim)}
+button.ghost:hover{color:var(--fg)}
+button.danger{background:rgba(255,107,107,.1);border-color:rgba(255,107,107,.4);color:#ff9c9c}
+button.danger:hover{background:rgba(255,107,107,.2)}
+button.sm{padding:5px 12px;font-size:11px}
+button.icon{padding:8px 12px}
+
+/* ---------- 按钮组 / 栅格行 ---------- */
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+/* ---------- 分页标签栏 ---------- */
+.tabs{
+  display:flex;gap:6px;margin:14px 0 12px;padding:5px;background:var(--glass);
+  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border:1px solid var(--glass-line);border-radius:99px;width:max-content;max-width:100%;overflow-x:auto;
+}
+.tab{
+  border:none;background:transparent;color:var(--dim);padding:7px 18px;border-radius:99px;
+  font-size:13px;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.tab:hover{color:var(--fg);background:var(--glass2)}
+.tab.active{
+  background:linear-gradient(135deg,var(--acc),var(--acc2));color:var(--acc-ink);font-weight:700;
+  box-shadow:0 2px 10px var(--acc-glow);
+}
+
+/* ---------- 工具栏 ---------- */
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.toolbar input[type=search]{
+  flex:1;min-width:130px;background:var(--glass2);border:1px solid var(--glass-line);border-radius:99px;
+  padding:9px 16px;color:var(--fg);font-size:13px;font-family:inherit;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.toolbar input[type=search]:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-glow)}
+
+/* ---------- 输入 ---------- */
+input[type=file]{font-size:12px;color:var(--dim);max-width:100%}
+input[type=file]::file-selector-button{
+  background:var(--card3);color:var(--fg);border:1px solid var(--line2);
+  border-radius:99px;padding:6px 12px;font-size:12px;margin-right:10px;cursor:pointer;font-family:inherit;
+}
+.chk{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--dim);margin-top:10px;cursor:pointer}
+.chk input{accent-color:var(--acc);width:15px;height:15px}
+
+/* ---------- 日志 ---------- */
+#log{
+  white-space:pre-wrap;font:12px/1.5 ui-monospace,"Cascadia Code",monospace;color:#b6c0cf;
+  background:rgba(8,11,14,.78);border:1px solid var(--glass-line);border-radius:14px;padding:12px;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  height:180px;overflow-y:auto;overflow-x:hidden;margin-bottom:12px;display:none;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+}
+#log.show{display:block}
+#log .ok{color:var(--ok)}
+#log .err{color:var(--err)}
+#log .warn{color:var(--warn)}
+
+/* ---------- 空态 / 错误 ---------- */
+.empty{text-align:center;color:var(--dim2);padding:40px 0;font-size:13px}
+.empty .big{font-size:30px;display:block;margin-bottom:8px;opacity:.5}
+.err-box{background:rgba(255,107,107,.08);border-color:rgba(255,107,107,.35);color:#ffb3b3}
+
+/* ---------- FAB ---------- */
+.fab{
+  position:fixed;right:16px;bottom:16px;width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(135deg,var(--acc),var(--acc2));border:none;color:var(--acc-ink);font-size:26px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px var(--acc-glow);cursor:pointer;
+  z-index:50;line-height:1;padding:0;outline:none;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.fab:hover{filter:brightness(1.1)}
+.fab:active{transform:scale(.9);box-shadow:0 4px 12px var(--acc-glow);background:linear-gradient(135deg,var(--acc),var(--acc2))}
+.fab:focus{outline:none;-webkit-tap-highlight-color:transparent}
+.fab svg{width:24px;height:24px;display:block;fill:var(--acc-ink);pointer-events:none}
+
+/* ---------- 弹窗 ---------- */
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px;z-index:99}
+.mask.show{display:flex}
+.modal{
+  background:var(--glass);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border:1px solid var(--glass-line);
+  border-radius:20px;padding:20px;width:100%;max-width:420px;box-shadow:var(--shadow-lg);
+  animation:pop .18s ease;
+}
+@keyframes pop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+.modal h3{margin:0 0 14px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.modal .bar{margin-top:16px;justify-content:flex-end}
+.dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:12px;margin:12px 0}
+.dl dt{color:var(--dim2)}
+.dl dd{margin:0;word-break:break-all;color:var(--fg)}
+.modal input[type=text],.modal input[type=number]{
+  background:var(--glass2);border:1px solid var(--glass-line);border-radius:10px;
+  padding:8px 11px;color:var(--fg);font-size:13px;font-family:inherit;
+}
+.modal input:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-glow)}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+code{background:var(--card2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:11px;color:var(--acc)}
+
+/* ---------- Root 权限管理 ---------- */
+.su-panel{margin:14px 0;border:1px solid var(--glass-line);border-radius:14px;padding:14px;background:var(--glass);backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur))}
+.su-panel .su-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.su-panel .su-head h4{margin:0;font-size:14px;font-weight:700}
+.su-warn{
+  background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.35);border-radius:10px;
+  padding:9px 11px;font-size:11px;line-height:1.6;color:#ffb3b3;margin-bottom:10px;
+}
+.su-list{display:flex;flex-direction:column;gap:8px;max-height:42vh;overflow:auto}
+.su-item{
+  display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--glass-line);
+  border-radius:11px;background:var(--glass2);
+}
+.su-item .su-pkg{flex:1;min-width:0;font-size:12.5px;word-break:break-all;color:var(--fg)}
+.su-item .su-uid{font-size:10.5px;color:var(--dim2);flex:none}
+.su-add{display:flex;gap:8px;margin-bottom:10px}
+.su-add input{
+  flex:1;min-width:0;background:var(--glass2);border:1px solid var(--glass-line);border-radius:10px;
+  padding:7px 11px;color:var(--fg);font-size:12.5px;font-family:inherit;
+}
+.su-add input:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-glow)}
+
+/* ---------- 设置页 ---------- */
+.setting-group{margin-bottom:16px}
+.setting-group .sg-title{font-size:12px;font-weight:700;color:var(--fg);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.setting-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.setting-row .sr-label{font-size:12px;color:var(--dim);min-width:110px}
+.setting-row input[type=text],.setting-row input[type=number]{
+  flex:1;min-width:140px;background:var(--glass2);border:1px solid var(--glass-line);border-radius:10px;
+  padding:7px 11px;color:var(--fg);font-size:12.5px;font-family:inherit;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.setting-row input:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-glow)}
+.sr-hint{width:100%;font-size:10px;color:var(--dim2);margin-top:2px}
+
+/* ---------- 主题 & 壁纸 ---------- */
+.swatches{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.swatch{
+  width:32px;height:32px;border-radius:50%;cursor:pointer;border:2px solid transparent;
+  display:flex;align-items:center;justify-content:center;transition:.15s;
+}
+.swatch.active{border-color:#fff;box-shadow:0 0 0 3px var(--acc-glow);transform:scale(1.1)}
+.swatch.wall-swatch{width:44px;height:44px;border-radius:12px}
+.wall-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:8px}
+.wall-item{
+  height:56px;border-radius:12px;cursor:pointer;border:2px solid var(--line2);
+  overflow:hidden;position:relative;transition:.15s;
+}
+.wall-item.active{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-glow)}
+
+/* 透明度滑杆 */
+input[type=range]{
+  -webkit-appearance:none;appearance:none;height:6px;border-radius:99px;
+  background:linear-gradient(90deg,rgba(255,255,255,.12),var(--acc));outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.5);cursor:pointer;
+}
+input[type=range]::-moz-range-thumb{
+  width:18px;height:18px;border-radius:50%;background:#fff;border:none;box-shadow:0 1px 5px rgba(0,0,0,.5);cursor:pointer;
+}
+
+/* ---------- 实心模式（关闭半透明时） ---------- */
+body.solid{
+  --glass:rgba(20,24,29,.92);
+  --glass2:rgba(27,32,39,.92); --glass3:rgba(34,40,51,.92);
+  --glass-line:var(--line); --glass-blur:0px; --veil:transparent;
+}
+body.solid .card,body.solid .tabs,body.solid .modal,body.solid .su-panel{backdrop-filter:none;-webkit-backdrop-filter:none}
+</style>
+</head>
+<body>
+
+<div id="log"></div>
+
+<div class="top">
+  <div class="logo">R</div>
+  <div>
+    <h1>RootWeb <span class="dot"></span></h1>
+    <div class="ver">v1.0.5 · 模块管理器</div>
+  </div>
+</div>
+<div class="sub" id="dev">加载中…</div>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-page="mods" onclick="switchPage('mods')">模块</button>
+  <button class="tab" data-page="root" onclick="switchPage('root')">Root 权限</button>
+  <button class="tab" data-page="settings" onclick="switchPage('settings')">设置</button>
+</div>
+
+<!-- ============ 模块页 ============ -->
+<div class="page show" id="page-mods">
+  <div class="toolbar">
+    <input type="search" id="q" placeholder="搜索模块…" oninput="render()">
+    <button onclick="load()">刷新</button>
+    <button class="ghost" onclick="toggleLog()">日志</button>
+  </div>
+
+  <div class="card">
+    <div class="name">安装模块</div>
+    <div class="desc">上传 Magisk / KernelSU / APatch 模块 zip。优先交给 apd 官方安装器；失败则回退手工解包 + 修 SELinux 上下文。</div>
+    <div class="bar" style="margin-top:8px">
+      <input type="file" id="zip" accept=".zip,application/zip">
+      <button class="primary" onclick="install()">上传安装</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="sure"> 我确认这是 root 级改动</label>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<!-- ============ Root 权限页 ============ -->
+<div class="page" id="page-root">
+  <div class="su-panel" style="margin:0">
+    <div class="su-head">
+      <h4>Root 权限管理</h4>
+      <span class="tag info" style="font-size:9px">APatch 超级用户列表</span>
+    </div>
+    <div class="su-warn">⚠ 直接修改 root 授权核心文件（package_config），写操作会重启 apd 进程、su 会短暂中断。误操作可能导致应用失去 root 或误授权，请谨慎！</div>
+    <div class="su-add">
+      <input type="text" id="suPkg" placeholder="输入包名授权 root，如 com.example.app">
+      <button class="sm primary" onclick="suGrant()">授权</button>
+      <button class="sm" onclick="loadSuList()">刷新列表</button>
+    </div>
+    <div id="suBox"><div class="empty" style="padding:10px 0">加载中…</div></div>
+  </div>
+</div>
+
+<!-- ============ 设置页 ============ -->
+<div class="page" id="page-settings">
+  <div class="card">
+    <div class="setting-group">
+      <div class="sg-title"><span class="tag info" style="font-size:9px">服务</span>服务配置</div>
+      <div id="svcFields"><div class="empty" style="padding:10px 0">加载中…</div></div>
+    </div>
+    <div class="setting-group">
+      <div class="sg-title"><span class="tag info" style="font-size:9px">Token</span>访问 token</div>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:8px">
+        当前：<code id="cfgTokenShow">…</code> · 存在 <code>/data/adb/rootwebui/token</code>
+      </div>
+      <div class="bar">
+        <button class="sm" onclick="regenToken()">重新生成</button>
+        <button class="sm" onclick="setCustomToken()">自定义…</button>
+        <button class="sm" onclick="restartService()">重启服务</button>
+      </div>
+      <div style="font-size:10px;color:var(--warn);margin-top:6px">改 token 后立即生效，旧链接会失效</div>
+    </div>
+    <div class="setting-group">
+      <div class="sg-title"><span class="tag info" style="font-size:9px">外观</span>界面风格</div>
+      <div class="setting-row">
+        <span class="sr-label">半透明</span>
+        <label class="chk" style="margin:0"><input type="checkbox" id="glassToggle" checked onchange="applyGlass(this.checked)"> 毛玻璃半透明（关闭则实心）</label>
+      </div>
+      <div class="setting-row">
+        <span class="sr-label">透明度</span>
+        <input type="range" id="glassRange" min="0" max="100" value="62" style="flex:1" oninput="applyGlassOpacity(this.value)">
+        <span id="glassVal" style="font-size:11px;color:var(--dim);min-width:36px;text-align:right">62%</span>
+      </div>
+      <div class="setting-row">
+        <span class="sr-label">毛玻璃模糊</span>
+        <input type="range" id="blurRange" min="0" max="40" value="16" style="flex:1" oninput="applyGlassBlur(this.value)">
+        <span id="blurVal" style="font-size:11px;color:var(--dim);min-width:36px;text-align:right">16px</span>
+      </div>
+      <div class="setting-row">
+        <span class="sr-label">色彩浓艳</span>
+        <input type="range" id="satRange" min="100" max="200" value="130" style="flex:1" oninput="applyGlassSat(this.value)">
+        <span id="satVal" style="font-size:11px;color:var(--dim);min-width:36px;text-align:right">130%</span>
+      </div>
+      <div class="sr-hint">透明度越大越实；模糊越大越"磨砂"；色彩浓艳=背景饱和度增强</div>
+    </div>
+    <div class="setting-group">
+      <div class="sg-title"><span class="tag info" style="font-size:9px">主题</span>主题色</div>
+      <div class="swatches" id="themeSwatches"></div>
+      <div class="setting-row" style="margin-top:8px">
+        <span class="sr-label">自定义色值</span>
+        <input type="text" id="customAcc" placeholder="#00d1a0" style="flex:1">
+        <button class="sm" onclick="applyCustomAcc()">应用</button>
+      </div>
+    </div>
+    <div class="setting-group">
+      <div class="sg-title"><span class="tag info" style="font-size:9px">壁纸</span>壁纸</div>
+      <div class="wall-grid" id="wallGrid"></div>
+      <div class="setting-row" style="margin-top:8px">
+        <span class="sr-label">本地上传</span>
+        <input type="file" id="wallFile" accept="image/*" style="flex:1" onchange="applyLocalWall()">
+      </div>
+      <div class="setting-row" style="margin-top:8px">
+        <span class="sr-label">自定义壁纸 URL</span>
+        <input type="text" id="customWall" placeholder="https://…/bg.jpg">
+        <button class="sm" onclick="applyCustomWall()">应用</button>
+      </div>
+      <div style="font-size:10px;color:var(--dim2);margin-top:6px">主题与壁纸保存在浏览器本地（localStorage），仅本机生效</div>
+    </div>
+    <div class="bar" style="justify-content:flex-end">
+      <button class="sm primary" onclick="saveSettings()">保存服务配置</button>
+    </div>
+  </div>
+</div>
+
+<button class="fab" onclick="load()" title="刷新" aria-label="刷新">
+  <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 8 8h-2a6 6 0 1 1-1.76-4.24L13 11h7V4l-2.35 2.35z"/></svg>
+</button>
+
+<div class="mask" id="mask" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script>
+'use strict';
+const $ = (s) => document.querySelector(s);
+
+// ---------- 日志 ----------
+const logEl = $('#log');
+function log(msg, cls) {
+  logEl.classList.add('show');
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  const t = new Date().toLocaleTimeString('zh-CN', {hour12:false});
+  line.textContent = `[${t}] ${msg}`;
+  logEl.prepend(line);
+  while (logEl.children.length > 200) logEl.lastChild.remove();
+}
+function toggleLog(){ logEl.classList.toggle('show'); }
+
+// ---------- 鉴权 token（从 URL ?token= 读取，之后所有请求带 X-Token 头） ----------
+const TOKEN = (() => {
+  const q = new URLSearchParams(location.search).get('token');
+  if (q) { try { localStorage.setItem('rwui_token', q); } catch {} return q; }
+  try { return localStorage.getItem('rwui_token') || ''; } catch { return ''; }
+})();
+
+// ---------- 请求封装 ----------
+async function api(path, opts = {}) {
+  const headers = Object.assign({}, opts.headers || {});
+  if (TOKEN) headers['X-Token'] = TOKEN;          // 主鉴权方式
+  const r = await fetch(path, Object.assign({}, opts, { headers }));
+  const text = await r.text();
+  let j;
+  try { j = JSON.parse(text); }
+  catch { throw new Error(`响应不是 JSON（HTTP ${r.status}）：${text.slice(0,200)}`); }
+  if (j.error && j.ok === false) throw new Error(j.error);
+  return j;
+}
+
+function sure() {
+  if (!$('#sure').checked) { log('✗ 请先勾选「我确认这是 root 级改动」', 'err'); return false; }
+  return true;
+}
+
+// ---------- 工具 ----------
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'"',"'":'&#39;'}[c]));
+const fmtKB = (kb) => kb == null ? '?' : (kb >= 1024 ? (kb/1024).toFixed(1)+' MB' : kb+' KB');
+const uptimeStr = (s) => {
+  s = Number(s) || 0;
+  const d = Math.floor(s/86400), h = Math.floor(s%86400/3600), m = Math.floor(s%3600/60);
+  return d ? `${d}天${h}时` : h ? `${h}时${m}分` : `${m}分`;
+};
+
+// 归一化：apd 的字段值都是字符串 "true"/"false"
+const isTrue = (v) => v === true || v === 'true';
+
+let STATE = null;
+
+// ---------- 渲染 ----------
+function modCard(m) {
+  const enabled = isTrue(m.enabled);
+  const pending = isTrue(m.remove);
+  const state = pending
+    ? '<span class="tag pend">待删除</span>'
+    : enabled ? '<span class="tag on">已启用</span>' : '<span class="tag off">已禁用</span>';
+
+  const extras = [];
+  if (isTrue(m.web))   extras.push('<span class="tag info">WebUI</span>');
+  if (isTrue(m.action)) extras.push('<span class="tag info">Action</span>');
+  if (m.update && isTrue(m.update)) extras.push('<span class="tag warn">可更新</span>');
+
+  const id = esc(m.id);
+  return `<div class="card">
+    <div class="row">
+      <div class="grow">
+        <div class="name">${esc(m.name || m.id)} <span class="ver">${esc(m.version || '')}</span></div>
+        <div class="desc">${esc(m.description || '（无描述）')}</div>
+        <div class="meta">${state}${extras.join('')}
+          <span>id=${id}</span>
+          ${m.author ? `<span>· ${esc(m.author)}</span>` : ''}
+          ${m.versionCode ? `<span>· vc ${esc(m.versionCode)}</span>` : ''}
+        </div>
+      </div>
+    </div>
+    <div class="bar" style="margin-top:10px">
+      <button class="sm" onclick="openDetail('${id}')">详情</button>
+      ${''}
+      ${isTrue(m.action) ? `<button class="sm" onclick="doAction('${id}')">执行 Action</button>` : ''}
+      ${pending
+        ? `<button class="sm" onclick="undoUninstall('${id}')">撤销删除</button>`
+        : `<button class="sm" onclick="act('${id}','${enabled ? 'disable' : 'enable'}')">${enabled ? '禁用' : '启用'}</button>
+           <button class="sm danger" onclick="act('${id}','uninstall')">卸载</button>`}
+    </div>
+  </div>`;
+}
+
+function render() {
+  if (!STATE) return;
+  let html;
+  try {
+    const q = $('#q').value.trim().toLowerCase();
+    let mods = STATE.modules || [];
+    if (q) {
+      mods = mods.filter((m) =>
+        (m.name||'').toLowerCase().includes(q) ||
+        (m.id||'').toLowerCase().includes(q) ||
+        (m.description||'').toLowerCase().includes(q) ||
+        (m.author||'').toLowerCase().includes(q)
+      );
+    }
+    html = mods.length
+      ? mods.map(modCard).join('')
+      : `<div class="card empty">${q ? '没有匹配的模块' : '没有检测到模块'}</div>`;
+  } catch (e) {
+    html = `<div class="card empty err-box">渲染出错：${esc(e && e.message)}</div>`;
+  }
+  $('#list').innerHTML = html;
+}
+
+// ---------- 动作 ----------
+async function load() {
+  try {
+    const s = await api('cgi-bin/state.sh');
+    STATE = s;
+    const d = s.device || {};
+    const pill = (t) => `<span class="pill">${t}</span>`;
+    $('#dev').innerHTML =
+      pill(esc(d.model)) +
+      pill(`Android ${esc(d.android)} (SDK ${esc(d.sdk)})`) +
+      pill(esc(d.abi)) +
+      pill(`uid ${esc(d.uid)}`) +
+      pill(`uptime ${uptimeStr(d.uptime)}`) +
+      pill(esc(d.apdVersion || '')) +
+      `<br>` +
+      pill(`模块 ${s.count} 个`) +
+      pill(`数据源 ${esc(s.source)}`);
+    render();
+  } catch (e) {
+    log('✗ 加载失败：' + e.message, 'err');
+    $('#list').innerHTML = `<div class="card empty err-box">加载失败：${esc(e.message)}<br><br>首次访问请带 token：<code>?token=xxx</code></div>`;
+  }
+}
+
+async function act(id, action) {
+  if (action !== 'enable' && !sure()) return;
+  const label = {enable:'启用', disable:'禁用', uninstall:'卸载', purge:'彻底删除'}[action] || action;
+  if (!confirm(`确定对 ${id} 执行「${label}」？`)) return;
+  log(`… ${id} → ${label}`);
+  try {
+    const r = await api(`cgi-bin/mod.sh?id=${encodeURIComponent(id)}&action=${action}`, {method:'POST'});
+    if (r.ok) log(`✓ ${id} → ${label}${r.needsReboot ? '（重启后生效）' : ''}${r.output ? '\n' + r.output : ''}`, 'ok');
+    else log(`✗ ${id} → ${label}：${r.error || '失败'}${r.output ? '\n' + r.output : ''}`, 'err');
+    load();
+  } catch (e) { log('✗ ' + e.message, 'err'); }
+}
+
+async function undoUninstall(id) {
+  log(`… ${id} → 撤销删除`);
+  try {
+    const r = await api(`cgi-bin/mod.sh?id=${encodeURIComponent(id)}&action=undo-uninstall`, {method:'POST'});
+    if (r.ok) log(`✓ ${id} 撤销删除成功`, 'ok'); else log(`✗ ${r.error || '失败'}`, 'err');
+    load();
+  } catch (e) { log('✗ ' + e.message, 'err'); }
+}
+
+async function doAction(id) {
+  if (!sure()) return;
+  log(`… ${id} → 执行 Action（可能需数秒）`);
+  try {
+    const r = await api(`cgi-bin/action.sh?id=${encodeURIComponent(id)}`, {method:'POST'});
+    const out = (r.output || '').trim();
+    const body = r.error ? r.error : (out || '（无输出）');
+    const extra = r.timeout ? '\n⚠ 执行超时（已强制停止，可能仍在后台运行）' : '';
+    log(`${r.ok ? '✓' : '✗'} ${id} Action 结果：\n${body}${extra}`, r.ok ? 'ok' : 'err');
+  } catch (e) {
+    log(`✗ ${id} Action 请求失败：${e.message}`, 'err');
+  }
+}
+
+async function install() {
+  if (!sure()) return;
+  const f = $('#zip').files[0];
+  if (!f) { log('✗ 请先选择 zip 文件', 'err'); return; }
+  const mb = (f.size/1048576).toFixed(2);
+  log(`… 上传 ${f.name}（${mb} MB）`);
+  try {
+    const r = await api(`cgi-bin/install.sh?name=${encodeURIComponent(f.name)}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/zip'},
+      body: f,
+    });
+    if (r.ok) {
+      log(`✓ 安装完成（方式：${r.method}）${r.id ? ' id=' + r.id : ''}，重启后生效`, 'ok');
+      if (r.output) log(r.output);
+      if (r.customize) log('customize.sh:\n' + r.customize);
+    } else {
+      log(`✗ 安装失败：${r.error || ''}\n${r.output || ''}${r.apdError ? '\napd: ' + r.apdError : ''}`, 'err');
+    }
+    load();
+  } catch (e) { log('✗ ' + e.message, 'err'); }
+}
+
+async function reboot() {
+  if (!confirm('确定重启设备？')) return;
+  try { await api('cgi-bin/reboot.sh', {method:'POST'}); log('… 重启指令已发出', 'warn'); }
+  catch (e) { log('✗ ' + e.message, 'err'); }
+}
+
+// ---------- 详情弹窗 ----------
+function openDetail(id) {
+  const m = (STATE?.modules || []).find((x) => x.id === id);
+  if (!m) return;
+  const rows = Object.entries(m).map(([k,v]) =>
+    `<dt>${esc(k)}</dt><dd>${esc(typeof v === 'object' ? JSON.stringify(v) : v)}</dd>`).join('');
+  $('#modal').innerHTML = `
+    <h3>${esc(m.name || m.id)}</h3>
+    <dl class="dl">${rows}</dl>
+    <div class="bar">
+      <button class="danger sm" onclick="closeModal();reboot()">重启设备</button>
+      <button class="sm" onclick="closeModal()">关闭</button>
+    </div>`;
+  $('#mask').classList.add('show');
+}
+function closeModal(){ $('#mask').classList.remove('show'); }
+
+// ---------- 设置页（内嵌 page） ----------
+const CFG_META = {
+  port:       {label:'监听端口', type:'number', hint:'1-65535，改后需重启服务', restart:true},
+  host:       {label:'监听地址', type:'text',   hint:'默认 127.0.0.1（仅本机）。改成 0.0.0.0 会对外网开放，危险！', restart:true},
+  max_upload: {label:'上传上限 (字节)', type:'number', hint:'默认 268435456 (256MB)', restart:false},
+  notify:     {label:'开机通知', type:'bool',   hint:'开机后弹通知提示访问地址', restart:false},
+  auto_open:  {label:'开机自动打开浏览器', type:'bool', hint:'开机后自动跳转浏览器', restart:false},
+};
+let CFG = null;
+
+async function openSettings() {
+  try {
+    const r = await api('cgi-bin/config.sh');
+    CFG = r;
+    renderSettings();
+  } catch (e) { log('✗ 读取配置失败：' + e.message, 'err'); }
+}
+
+function renderSettings() {
+  const c = CFG.config || {};
+  const row = (key, meta, val) => {
+    const id = 'cfg_' + key;
+    let input;
+    if (meta.type === 'bool') {
+      input = `<label class="chk" style="margin:0"><input type="checkbox" id="${id}" ${val ? 'checked' : ''}> 启用</label>`;
+    } else {
+      input = `<input id="${id}" type="${meta.type}" value="${esc(val)}">`;
+    }
+    return `<div class="setting-row">
+      <span class="sr-label">${esc(meta.label)}${meta.restart ? ' <span class="tag warn" style="font-size:8px">需重启</span>' : ''}</span>
+      ${input}
+      <div class="sr-hint">${esc(meta.hint)}</div>
+    </div>`;
+  };
+
+  const vals = {
+    port: c.port, host: c.host, max_upload: c.maxUpload,
+    notify: c.notify, auto_open: c.autoOpen,
+  };
+
+  $('#svcFields').innerHTML = Object.entries(CFG_META).map(([k, m]) => row(k, m, vals[k])).join('');
+  $('#cfgTokenShow').textContent = CFG.token || '…';
+  // 同步半透明开关状态
+  try { $('#glassToggle').checked = localStorage.getItem('rwui_glass') !== '0'; } catch {}
+  // 同步透明度滑杆
+  try { applyGlassOpacity(localStorage.getItem('rwui_glass_op') ?? 62); } catch {}
+  // 同步毛玻璃模糊/饱和度滑杆
+  try { applyGlassBlur(localStorage.getItem('rwui_glass_blur') ?? 16); } catch {}
+  try { applyGlassSat(localStorage.getItem('rwui_glass_sat') ?? 130); } catch {}
+  renderThemeSwatches();
+  renderWallGrid();
+}
+
+async function saveSettings() {
+  const get = (k) => {
+    const el = $('#cfg_' + k);
+    return CFG_META[k].type === 'bool' ? (el.checked ? 'true' : 'false') : el.value.trim();
+  };
+  const keys = Object.keys(CFG_META);
+  let needRestart = false;
+  for (const k of keys) {
+    const v = get(k);
+    const cur = {port:String(CFG.config.port), host:CFG.config.host,
+                 max_upload:String(CFG.config.maxUpload),
+                 notify:String(CFG.config.notify), auto_open:String(CFG.config.autoOpen)}[k];
+    if (v === cur) continue;
+    if (CFG_META[k].restart) needRestart = true;
+    try {
+      const r = await api(`cgi-bin/config.sh?action=set&key=${k}&value=${encodeURIComponent(v)}`, {method:'POST'});
+      log(`✓ ${k} → ${v}${r.note ? '（' + r.note + '）' : ''}`, 'ok');
+    } catch (e) { log(`✗ ${k} 保存失败：${e.message}`, 'err'); }
+  }
+  if (needRestart) log('⚠ 端口/地址已改，点「重启服务」才会生效', 'warn');
+  openSettings();
+}
+
+async function regenToken() {
+  if (!confirm('重新生成 token？旧链接会立即失效，需要重新访问。')) return;
+  try {
+    const r = await api('cgi-bin/config.sh?action=token', {method:'POST'});
+    log(`✓ 新 token：${r.token}`, 'ok');
+    try { localStorage.setItem('rwui_token', r.token); } catch {}
+    // 更新页面 URL，避免旧 token 留在地址栏
+    history.replaceState(null, '', `?token=${r.token}`);
+    location.reload();
+  } catch (e) { log('✗ ' + e.message, 'err'); }
+}
+
+async function setCustomToken() {
+  const t = prompt('输入新 token（≥8 位，仅字母数字 . _ -）：');
+  if (!t) return;
+  try {
+    const r = await api(`cgi-bin/config.sh?action=token&value=${encodeURIComponent(t)}`, {method:'POST'});
+    log(`✓ token 已设为：${r.token}`, 'ok');
+    try { localStorage.setItem('rwui_token', r.token); } catch {}
+    history.replaceState(null, '', `?token=${r.token}`);
+    location.reload();
+  } catch (e) { log('✗ ' + e.message, 'err'); }
+}
+
+async function restartService() {
+  if (!confirm('重启 RootWeb 服务？（约 5 秒，若改了端口请访问新端口）')) return;
+  try {
+    await api('cgi-bin/config.sh?action=restart', {method:'POST'});
+    log('… 服务重启中，5 秒后自动刷新（若改过端口，需手动访问新端口）', 'warn');
+    setTimeout(() => location.reload(), 6000);
+  } catch (e) { log('✗ ' + e.message, 'err'); }
+}
+
+// ---------- 主题 & 壁纸 ----------
+// 预设主题色（APatch teal 系列 + 常用色）
+const THEMES = [
+  {id:'teal',   c:'#00d1a0'},
+  {id:'cyan',   c:'#00b4d8'},
+  {id:'blue',   c:'#4c9aff'},
+  {id:'purple', c:'#a855f7'},
+  {id:'pink',   c:'#ec4899'},
+  {id:'orange', c:'#fb923c'},
+  {id:'yellow', c:'#eab308'},
+  {id:'red',    c:'#ef4444'},
+];
+
+// 预设壁纸（渐变）
+const WALLS = [
+  {id:'default', css:'radial-gradient(1200px 500px at 50% -200px, rgba(0,209,160,.07), transparent 60%)'},
+  {id:'plain',   css:'none'},
+  {id:'aurora',  css:'linear-gradient(135deg, #0a0c0f 0%, #0e2b2a 50%, #101418 100%)'},
+  {id:'teal',    css:'radial-gradient(800px 400px at 80% -50px, rgba(0,209,160,.16), transparent 55%)'},
+  {id:'purple',  css:'radial-gradient(900px 500px at 20% -80px, rgba(168,85,247,.14), transparent 55%)'},
+  {id:'blue',    css:'radial-gradient(900px 500px at 75% -60px, rgba(76,154,255,.14), transparent 55%)'},
+];
+
+function hexToRgb(hex) {
+  const h = hex.replace('#','');
+  const n = h.length === 3 ? h.split('').map(c=>c+c).join('') : h;
+  const v = parseInt(n, 16);
+  return {r:(v>>16)&255, g:(v>>8)&255, b:v&255};
+}
+function applyTheme(c) {
+  const {r,g,b} = hexToRgb(c);
+  const root = document.documentElement.style;
+  root.setProperty('--acc', c);
+  root.setProperty('--acc2', c);
+  root.setProperty('--acc-glow', `rgba(${r},${g},${b},.28)`);
+  // 按亮度选文字色：亮色主题用深色文字，暗色主题用白色，保证对比度
+  const lum = (r*299 + g*587 + b*114) / 1000;
+  root.setProperty('--acc-ink', lum > 150 ? '#06281f' : '#ffffff');
+  try { localStorage.setItem('rwui_theme', c); } catch {}
+}
+function applyWall(w) {
+  document.documentElement.style.setProperty('--wall', w);
+  try { localStorage.setItem('rwui_wall', w); }
+  catch (e) {
+    // 本地大图 dataURL 常超 localStorage 配额（~5MB），此时仅本次会话生效
+    log('⚠ 壁纸已应用，但本地存储超限（刷新后会丢失）', 'warn');
+  }
+}
+// 半透明开关：off 时给 body 加 .solid 类，退回实心卡片
+function applyGlass(on) {
+  document.body.classList.toggle('solid', !on);
+  const el = $('#glassToggle');
+  if (el) el.checked = on;
+  try { localStorage.setItem('rwui_glass', on ? '1' : '0'); } catch {}
+  // 切换后按当前滑杆值重算透明度（solid / 非 solid 映射不同）
+  const op = localStorage.getItem('rwui_glass_op');
+  applyGlassOpacity(op === null ? 62 : Number(op));
+}
+// 透明度：v 0~100，越大越不透明。映射到 --glass/--glass2/--glass3/--veil 的 alpha
+function applyGlassOpacity(v) {
+  const p = Math.max(0, Math.min(100, Number(v) || 0)) / 100;   // 0..1
+  const solid = document.body.classList.contains('solid');
+  const root = document.body.style;   // 设在 body 上，才能覆盖 body.solid 里的变量定义
+  let a1, a2, a3, av;
+  if (solid) {
+    // 实心模式：不模糊，alpha 区间更实（.55 -> 1.0），滑杆直接控制不透明度
+    a1 = 0.55 + p * 0.45;
+    a2 = 0.55 + p * 0.42;
+    a3 = 0.58 + p * 0.42;
+    av = 0.30 + p * 0.45;   // 暗化层（实心也跟滑杆走，越实越暗）
+  } else {
+    // 半透明（毛玻璃）：0 -> .06（近乎全透），100 -> .92（接近实心）
+    a1 = 0.06 + p * 0.86;
+    a2 = 0.05 + p * 0.80;
+    a3 = 0.08 + p * 0.82;
+    av = p * 0.65;          // 越透 -> 暗化越弱，让壁纸更明显
+  }
+  root.setProperty('--glass', `rgba(20,24,29,${a1.toFixed(3)})`);
+  root.setProperty('--glass2', `rgba(27,32,39,${a2.toFixed(3)})`);
+  root.setProperty('--glass3', `rgba(34,40,51,${a3.toFixed(3)})`);
+  root.setProperty('--veil', `rgba(10,12,15,${av.toFixed(3)})`);
+  const lbl = $('#glassVal');
+  if (lbl) lbl.textContent = Math.round(p * 100) + '%';
+  const rg = $('#glassRange');
+  if (rg && String(v) !== rg.value) rg.value = Math.round(p * 100);
+  try { localStorage.setItem('rwui_glass_op', String(Math.round(p * 100))); } catch {}
+}
+// 毛玻璃模糊强度：0~40px
+function applyGlassBlur(v) {
+  const b = Math.max(0, Math.min(40, Number(v) || 0));
+  document.body.style.setProperty('--glass-blur', b + 'px');
+  const lbl = $('#blurVal');
+  if (lbl) lbl.textContent = Math.round(b) + 'px';
+  const rg = $('#blurRange');
+  if (rg && String(v) !== rg.value) rg.value = Math.round(b);
+  try { localStorage.setItem('rwui_glass_blur', String(Math.round(b))); } catch {}
+}
+// 背景饱和度：100~200%
+function applyGlassSat(v) {
+  const s = Math.max(100, Math.min(200, Number(v) || 130));
+  document.body.style.setProperty('--glass-sat', (s / 100).toFixed(2));
+  const lbl = $('#satVal');
+  if (lbl) lbl.textContent = Math.round(s) + '%';
+  const rg = $('#satRange');
+  if (rg && String(v) !== rg.value) rg.value = Math.round(s);
+  try { localStorage.setItem('rwui_glass_sat', String(Math.round(s))); } catch {}
+}
+function loadThemeWall() {
+  try {
+    const t = localStorage.getItem('rwui_theme');
+    if (t) applyTheme(t);
+    const w = localStorage.getItem('rwui_wall');
+    if (w) applyWall(w);
+    const g = localStorage.getItem('rwui_glass');
+    applyGlass(g === null ? true : g === '1');   // 默认开启半透明
+    const op = localStorage.getItem('rwui_glass_op');
+    applyGlassOpacity(op === null ? 62 : Number(op));   // 恢复透明度
+    const bl = localStorage.getItem('rwui_glass_blur');
+    applyGlassBlur(bl === null ? 16 : Number(bl));      // 恢复模糊
+    const sa = localStorage.getItem('rwui_glass_sat');
+    applyGlassSat(sa === null ? 130 : Number(sa));      // 恢复饱和度
+  } catch {}
+}
+function renderThemeSwatches() {
+  const cur = (() => { try { return localStorage.getItem('rwui_theme') || '#00d1a0'; } catch { return '#00d1a0'; } })();
+  $('#themeSwatches').innerHTML = THEMES.map(t => {
+    const act = (cur.toLowerCase() === t.c.toLowerCase()) ? ' active' : '';
+    return `<div class="swatch${act}" style="background:${t.c}" title="${t.id}" onclick="applyTheme('${t.c}');renderThemeSwatches()"></div>`;
+  }).join('');
+}
+function renderWallGrid() {
+  const cur = (() => { try { return localStorage.getItem('rwui_wall') || WALLS[0].css; } catch { return WALLS[0].css; } })();
+  let html = WALLS.map((w, i) => {
+    const act = (cur === w.css) ? ' active' : '';
+    const bg = w.css === 'none' ? 'none' : w.css;
+    return `<div class="wall-item${act}" data-wall="${i}" style="background-image:${bg}" title="${w.id}"></div>`;
+  }).join('');
+  // 本地壁纸预览格（当前壁纸为 url(...) 数据时显示并高亮）
+  const isLocal = /^url\(/.test(cur);
+  const actL = isLocal ? ' active' : '';
+  html += `<div class="wall-item${actL}" data-wall="local" style="background:#0e1216;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--dim)" title="本地/自定义">本地<br>图</div>`;
+  $('#wallGrid').innerHTML = html;
+}
+// 壁纸格子点击（事件委托，避免内联 onclick 的转义问题）
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('.wall-item');
+  if (!el || !el.dataset.wall) return;
+  const key = el.dataset.wall;
+  if (key === 'local') { const f = $('#wallFile'); if (f) f.click(); return; }
+  const idx = parseInt(key, 10);
+  if (Number.isNaN(idx) || !WALLS[idx]) return;
+  applyWall(WALLS[idx].css);
+  renderWallGrid();
+});
+function applyCustomAcc() {
+  const v = $('#customAcc').value.trim();
+  if (!/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(v)) { log('✗ 色值格式，如 #00d1a0', 'err'); return; }
+  applyTheme(v);
+  renderThemeSwatches();
+  log('✓ 主题色已应用 ' + v, 'ok');
+}
+function applyCustomWall() {
+  const v = $('#customWall').value.trim();
+  if (!v) return;
+  applyWall(`url("${v}")`);
+  log('✓ 壁纸已应用', 'ok');
+}
+
+// 本地上传壁纸：读为 dataURL 存本地。若原图过大则用 canvas 压到最大 1080 宽，避免 localStorage 溢出
+function applyLocalWall() {
+  const f = $('#wallFile').files[0];
+  if (!f) return;
+  if (!/^image\//.test(f.type)) { log('✗ 请选择图片文件', 'err'); return; }
+  const MAXW = 1080, MAXQ = 0.82;   // localStorage 通常 ~5MB，压一下更稳
+  const reader = new FileReader();
+  reader.onload = () => {
+    const raw = reader.result;
+    // 小图（<600KB）直接用原 dataURL
+    if (raw.length < 600 * 1024) { setLocalWall(raw, f.name); return; }
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, MAXW / img.width);
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      const url = cv.toDataURL('image/jpeg', MAXQ);
+      setLocalWall(url, f.name);
+    };
+    img.onerror = () => setLocalWall(raw, f.name);
+    img.src = raw;
+  };
+  reader.onerror = () => log('✗ 读取图片失败', 'err');
+  reader.readAsDataURL(f);
+}
+function setLocalWall(dataUrl, name) {
+  applyWall(`url("${dataUrl}")`);
+  renderWallGrid();
+  log(`✓ 本地壁纸已应用（${name}）`, 'ok');
+}
+
+// ---------- 分页切换 ----------
+function switchPage(page) {
+  document.querySelectorAll('.tab').forEach((t) => {
+    t.classList.toggle('active', t.dataset.page === page);
+  });
+  document.querySelectorAll('.page').forEach((p) => {
+    p.classList.toggle('show', p.id === 'page-' + page);
+  });
+  if (page === 'root') loadSuList();
+  if (page === 'settings') openSettings();
+}
+
+// ---------- Root 权限管理 ----------
+let SULIST = null;
+
+async function loadSuList() {
+  try {
+    const r = await api('cgi-bin/su.sh');
+    SULIST = r;
+    renderSuList();
+  } catch (e) {
+    $('#suBox').innerHTML = `<div class="su-warn">加载授权列表失败：${esc(e.message)}</div>`;
+  }
+}
+
+function renderSuList() {
+  const apps = (SULIST && SULIST.apps) || [];
+  const box = $('#suBox');
+  if (!apps.length) {
+    box.innerHTML = `<div class="empty" style="padding:16px 0">尚未配置任何 root 授权</div>`;
+    return;
+  }
+  const item = (a) => {
+    const st = a.exclude
+      ? '<span class="tag warn">排除</span>'
+      : a.allow
+        ? '<span class="tag on">已授权</span>'
+        : '<span class="tag off">已拒绝</span>';
+    const btn = a.exclude
+      ? ''
+      : a.allow
+        ? `<button class="sm danger" onclick="suToggle('${esc(a.pkg)}','revoke')">撤销</button>`
+        : `<button class="sm primary" onclick="suToggle('${esc(a.pkg)}','grant')">授权</button>`;
+    return `<div class="su-item">
+        <div class="su-pkg">${esc(a.pkg)}</div>
+        <div class="su-uid">uid ${esc(a.uid)}</div>
+        ${st}
+        ${btn}
+      </div>`;
+  };
+  box.innerHTML = `<div class="su-list">${apps.map(item).join('')}</div>`;
+}
+
+async function suToggle(pkg, action) {
+  const label = {grant:'授权', revoke:'撤销'}[action] || action;
+  const warn = '⚠ 危险操作：直接修改 APatch 的 root 授权核心文件，会重启 apd 进程（su 短暂中断）。\n\n' +
+    `确定要【${label}】应用 ${pkg}？`;
+  if (!confirm(warn)) return;
+  log(`… ${pkg} → ${label}`);
+  try {
+    const r = await api(`cgi-bin/su.sh?action=${action}&pkg=${encodeURIComponent(pkg)}`, {method:'POST'});
+    log(`✓ ${pkg} ${label}${r.restarted ? '（已重启 apd）' : ''}`, 'ok');
+    loadSuList();
+  } catch (e) { log(`✗ ${pkg} ${label}失败：${e.message}`, 'err'); }
+}
+
+async function suGrant() {
+  const pkg = $('#suPkg').value.trim();
+  if (!pkg) { log('✗ 请输入包名', 'err'); return; }
+  if (!/^[A-Za-z0-9._-]+$/.test(pkg)) { log('✗ 包名含非法字符', 'err'); return; }
+  const warn = `⚠ 危险操作：给 ${pkg} 授予 root 权限，会修改核心授权文件并重启 apd。\n确定继续？`;
+  if (!confirm(warn)) return;
+  log(`… 授权 ${pkg}`);
+  try {
+    const r = await api(`cgi-bin/su.sh?action=grant&pkg=${encodeURIComponent(pkg)}`, {method:'POST'});
+    log(`✓ ${pkg} 已授权${r.restarted ? '（已重启 apd）' : ''}`, 'ok');
+    $('#suPkg').value = '';
+    loadSuList();
+  } catch (e) { log(`✗ 授权失败：${e.message}`, 'err'); }
+}
+
+// 启动
+loadThemeWall();
+load();
+setInterval(() => { if (!document.hidden) load(); }, 30000);
+</script>
+</body>
+</html>

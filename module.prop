@@ -1,0 +1,6 @@
+id=RootWeb
+name=RootWeb
+version=v1.0.5
+versionCode=10005
+author=cvby
+description=在系统浏览器里管理 root 模块（列表/启停/安装/卸载/Action + 动态改端口/地址/token + Root 权限管理）。基于 busybox httpd + CGI，仅监听 127.0.0.1，token 鉴权。
